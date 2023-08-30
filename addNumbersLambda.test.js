@@ -1,20 +1,25 @@
 const awsMock = require('aws-sdk-mock');
+const AWS = require('aws-sdk');
 const { addNumbersLambda } = require('./addNumbersLambda');
 
 describe('addNumbersLambda', () => {
   afterEach(() => {
-    awsMock.restore('Lambda');
+    awsMock.restore('DynamoDB.DocumentClient'); // Restore the DynamoDB mock to make sure it doesn't affect other tests
   });
 
-  it('should add two numbers', async () => {
+  it('should add two numbers and mock DynamoDB', async () => {
     const event = { num1: 5, num2: 3 };
-    awsMock.mock('Lambda', 'invoke', (params, callback) => {
-      callback(null, { Payload: JSON.stringify({ statusCode: 200, body: JSON.stringify({ sum: 8 }) }) });
+
+    // Mock DynamoDB DocumentClient get method
+    awsMock.mock('DynamoDB.DocumentClient', 'get', (params, callback) => {
+      // Provide a mock response
+      callback(null, { Item: { id: 'someId', value: 'mockedValue' } });
     });
 
     const result = await addNumbersLambda(event, {});
     const parsedResult = JSON.parse(result.body);
 
     expect(parsedResult.sum).toEqual(8);
+    expect(parsedResult.dbResult.Item.value).toEqual('mockedValue');
   });
 });
